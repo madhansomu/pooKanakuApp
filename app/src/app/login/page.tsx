@@ -28,18 +28,27 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        setError(authError.message === 'Invalid login credentials'
+          ? 'Invalid email or password. Please check your credentials.'
+          : authError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        window.location.href = redirectTo;
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Login failed. Please try again.');
       setLoading(false);
-      return;
     }
-
-    router.push(redirectTo);
   };
 
   return (
