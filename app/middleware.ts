@@ -8,10 +8,13 @@ export function middleware(req: NextRequest) {
 
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) return NextResponse.next();
 
-  const token = req.cookies.get('sb-access-token')?.value
-    || req.cookies.get('supabase-auth-token')?.value;
+  // Check for any Supabase auth cookie (sb-<ref>-auth-token or legacy names)
+  const hasToken = [...req.cookies].some(([name]) =>
+    name.startsWith('sb-') && name.endsWith('-auth-token')
+  ) || req.cookies.has('sb-access-token')
+    || req.cookies.has('supabase-auth-token');
 
-  if (!token) {
+  if (!hasToken) {
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);

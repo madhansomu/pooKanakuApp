@@ -1,16 +1,6 @@
 const CACHE_NAME = 'pookanaku-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/login',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -27,8 +17,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET, API calls, and Next.js internals
+  // Only cache same-origin static assets, skip everything else
   if (request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
+  if (request.mode === 'navigate') return; // skip all page navigations
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/_next/')) return;
 
@@ -42,7 +34,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => cached || new Response('', { status: 408 }));
 
       return cached || fetchPromise;
     })
