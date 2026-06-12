@@ -10,7 +10,7 @@ function decodeJwtPayload(token: string) {
     const parts = token.split('.');
     if (parts.length < 2) return null;
     const payload = parts[1];
-    const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
     return JSON.parse(json);
   } catch (e) {
     return null;
