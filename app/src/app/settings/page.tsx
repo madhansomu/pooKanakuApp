@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLangStore } from "../../stores/langStore"
 import { t, type Lang } from "../../lib/i18n"
-import { logoutAction } from "../login/actions"
+import { supabase } from "../../lib/supabase"
 import { useUIStore } from "../../stores/uiStore"
 
 type UserInfo = {
@@ -23,10 +23,21 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const resp = await fetch("/api/shop_leaves/ping")
-        // We don't have a user endpoint yet, so we use a basic approach
-        // For now, show default info
-        setUser({ email: 'admin@pookanaku.com', full_name: 'Admin', role: 'Admin' })
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          router.replace('/login')
+          return
+        }
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('email, full_name, role')
+          .eq('auth_uid', session.user.id)
+          .maybeSingle()
+        if (userRow) {
+          setUser(userRow as UserInfo)
+        } else {
+          setUser({ email: session.user.email || '', full_name: null, role: 'Admin' })
+        }
       } catch {
         setUser({ email: 'admin@pookanaku.com', full_name: 'Admin', role: 'Admin' })
       } finally {
@@ -34,10 +45,10 @@ export default function SettingsPage() {
       }
     }
     load()
-  }, [])
+  }, [router])
 
   const handleLogout = async () => {
-    await logoutAction()
+    await supabase.auth.signOut()
     router.push("/login")
   }
 

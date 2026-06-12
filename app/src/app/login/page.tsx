@@ -1,34 +1,45 @@
 'use client';
 
-// src/app/login/page.tsx
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { loginAction } from './actions';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 import { useLangStore } from '../../stores/langStore';
 import { t } from '../../lib/i18n';
+import { Suspense } from 'react';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
+  const { lang } = useLangStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { lang } = useLangStore();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace(redirectTo);
+    });
+  }, [router, redirectTo]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const result = await loginAction(email, password);
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    if (result.error) {
-      setError(result.error);
+    if (authError) {
+      setError(authError.message);
       setLoading(false);
       return;
     }
 
-    router.push('/');
+    router.push(redirectTo);
   };
 
   return (
@@ -49,7 +60,6 @@ export default function LoginPage() {
         padding: '2.5rem 2rem',
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
       }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🌺</div>
           <h1 style={{
@@ -65,7 +75,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Error */}
         {error && (
           <div style={{
             backgroundColor: '#FEF2F2',
@@ -76,11 +85,10 @@ export default function LoginPage() {
             color: '#DC2626',
             fontSize: '0.875rem',
           }}>
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label style={{
@@ -168,5 +176,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
