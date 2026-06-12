@@ -9,7 +9,7 @@ import type { User } from '../types/database';
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { setUser, setInitialized, setLoading, initialized, user } = useAuthStore();
+  const { setUser, setInitialized, setLoading, initialized } = useAuthStore();
 
   const isLoginPage = pathname?.startsWith('/login');
 
@@ -35,6 +35,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (userRow) {
         setUser(userRow as User);
       } else {
+        // Auto-create user row if missing
         const { data: newUser } = await supabase
           .from('users')
           .insert({
@@ -47,14 +48,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           .select()
           .single();
 
-        if (newUser) {
-          setUser(newUser as User);
-        } else {
-          setUser(null);
-          if (!isLoginPage) {
-            router.replace('/login');
-          }
-        }
+        setUser(newUser ? (newUser as User) : null);
       }
     } catch (err) {
       console.error('AuthProvider: failed to load user', err);
@@ -69,7 +63,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (initialized) return;
-
     loadUser().then(() => setInitialized());
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -85,33 +78,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [initialized, loadUser, setInitialized, setUser, router, isLoginPage]);
 
-  // Don't render protected content while checking auth
-  if (!initialized && !isLoginPage) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'var(--color-background)',
-      }}>
-        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🌺</div>
-          <div style={{ fontSize: '0.875rem' }}>Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Redirect to login if not authenticated (and not on login page)
-  if (!user && !isLoginPage && initialized) {
-    return null;
-  }
-
+  // Always render children — redirect handles auth
   return <>{children}</>;
 }

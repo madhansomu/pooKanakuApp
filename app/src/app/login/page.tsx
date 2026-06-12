@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { useLangStore } from '../../stores/langStore';
@@ -17,36 +17,29 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.replace(redirectTo);
-    });
-  }, [router, redirectTo]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (authError) {
         setError(authError.message === 'Invalid login credentials'
-          ? 'Invalid email or password. Please check your credentials.'
+          ? 'Invalid email or password'
           : authError.message);
         setLoading(false);
         return;
       }
 
-      if (data.session) {
-        window.location.href = redirectTo;
-      }
+      // Force full reload so AuthProvider picks up the new session
+      window.location.href = redirectTo;
     } catch (err: any) {
-      setError(err?.message || 'Login failed. Please try again.');
+      setError(err?.message || 'Login failed');
       setLoading(false);
     }
   };
@@ -71,12 +64,7 @@ function LoginForm() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🌺</div>
-          <h1 style={{
-            margin: 0,
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            color: 'var(--color-primary)',
-          }}>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-primary)' }}>
             PooKanakuApp
           </h1>
           <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
@@ -86,13 +74,9 @@ function LoginForm() {
 
         {error && (
           <div style={{
-            backgroundColor: '#FEF2F2',
-            border: '1px solid #FECACA',
-            borderRadius: '8px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
-            color: '#DC2626',
-            fontSize: '0.875rem',
+            backgroundColor: '#FEF2F2', border: '1px solid #FECACA',
+            borderRadius: '8px', padding: '0.75rem 1rem',
+            marginBottom: '1.25rem', color: '#DC2626', fontSize: '0.875rem',
           }}>
             {error}
           </div>
@@ -100,10 +84,7 @@ function LoginForm() {
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{
-              display: 'block', marginBottom: '0.375rem',
-              fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text)',
-            }}>
+            <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text)' }}>
               {t(lang, 'login.email')}
             </label>
             <input
@@ -113,25 +94,12 @@ function LoginForm() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder={t(lang, 'login.placeholderEmail')}
-              style={{
-                width: '100%',
-                padding: '0.625rem 0.875rem',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                backgroundColor: 'var(--color-background)',
-                color: 'var(--color-text)',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              style={{ width: '100%', padding: '0.625rem 0.875rem', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: 'var(--color-background)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
 
           <div>
-            <label style={{
-              display: 'block', marginBottom: '0.375rem',
-              fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text)',
-            }}>
+            <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text)' }}>
               {t(lang, 'login.password')}
             </label>
             <input
@@ -141,17 +109,7 @@ function LoginForm() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder={t(lang, 'login.placeholderPassword')}
-              style={{
-                width: '100%',
-                padding: '0.625rem 0.875rem',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                backgroundColor: 'var(--color-background)',
-                color: 'var(--color-text)',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
+              style={{ width: '100%', padding: '0.625rem 0.875rem', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.9rem', backgroundColor: 'var(--color-background)', color: 'var(--color-text)', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
 
@@ -162,11 +120,8 @@ function LoginForm() {
             style={{
               padding: '0.75rem',
               backgroundColor: loading ? '#9CA3AF' : 'var(--color-primary)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              fontSize: '0.95rem',
+              color: '#fff', border: 'none', borderRadius: '8px',
+              fontWeight: 600, fontSize: '0.95rem',
               cursor: loading ? 'not-allowed' : 'pointer',
               marginTop: '0.25rem',
             }}
@@ -175,12 +130,7 @@ function LoginForm() {
           </button>
         </form>
 
-        <p style={{
-          textAlign: 'center',
-          marginTop: '1.5rem',
-          fontSize: '0.8rem',
-          color: 'var(--color-text-muted)',
-        }}>
+        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
           {t(lang, 'login.contact')}
         </p>
       </div>
