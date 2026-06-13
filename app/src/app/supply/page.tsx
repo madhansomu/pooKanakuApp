@@ -10,6 +10,7 @@ export default function SupplyPage() {
   const [supplies, setSupplies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingSupply, setEditingSupply] = useState<any>(null);
 
   const { lang } = useLangStore();
 
@@ -90,6 +91,7 @@ export default function SupplyPage() {
                       ₹{s.total_amount}
                     </td>
                     <td data-label="" className="pkk-mobile-actions" style={tdStyle}>
+                      <button onClick={() => setEditingSupply(s)} style={actionBtnStyle}>✏️</button>
                       <button onClick={() => handleDelete(s.id)} style={{ ...actionBtnStyle, color: 'var(--color-no-supply)' }}>🗑️</button>
                     </td>
                   </tr>
@@ -102,6 +104,9 @@ export default function SupplyPage() {
 
       {isFormOpen && (
         <SupplyForm onClose={handleCloseForm} />
+      )}
+      {editingSupply && (
+        <SupplyForm supply={editingSupply} onClose={() => { setEditingSupply(null); fetchSupplies(); }} />
       )}
     </div>
   );

@@ -1,12 +1,36 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Middleware is minimal — auth is handled client-side by AuthProvider.
-// This only protects against direct URL access without any session.
+const PUBLIC_PATHS = ['/login', '/api', '/_next', '/favicon.ico', '/manifest.json', '/icons'];
+
 export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) return NextResponse.next();
+
+  const hasSession = req.cookies.has('sb-access-token') || req.cookies.has('supabase-auth-token');
+
+  if (!hasSession) {
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: []
+  matcher: [
+    '/',
+    '/customers/:path*',
+    '/flowers/:path*',
+    '/supply/:path*',
+    '/calendar/:path*',
+    '/leaves/:path*',
+    '/billing/:path*',
+    '/payments/:path*',
+    '/expenses/:path*',
+    '/reports/:path*',
+    '/settings/:path*',
+  ]
 };

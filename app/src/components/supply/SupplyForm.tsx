@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createSupply, getCustomersForDropdown, getFlowersForDropdown } from '../../app/supply/actions';
+import { createSupply, updateSupply, getCustomersForDropdown, getFlowersForDropdown } from '../../app/supply/actions';
 
 interface SupplyFormProps {
   onClose: () => void;
+  supply?: any;
 }
 
-export default function SupplyForm({ onClose }: SupplyFormProps) {
+export default function SupplyForm({ onClose, supply }: SupplyFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,13 +25,17 @@ export default function SupplyForm({ onClose }: SupplyFormProps) {
       const [c, f] = await Promise.all([getCustomersForDropdown(), getFlowersForDropdown()]);
       setCustomers(c);
       setFlowers(f);
-      if (f.length > 0) {
+      if (supply) {
+        setSelectedFlowerId(supply.flower_type_id);
+        setUnitRate(supply.unit_rate);
+        setQuantity(supply.quantity);
+      } else if (f.length > 0) {
         setSelectedFlowerId(f[0].id);
         setUnitRate(f[0].default_rate);
       }
     }
     loadData();
-  }, []);
+  }, [supply]);
 
   useEffect(() => {
     setTotalAmount(quantity * unitRate);
@@ -51,7 +56,9 @@ export default function SupplyForm({ onClose }: SupplyFormProps) {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const result = await createSupply(formData);
+    const result = supply
+      ? await updateSupply(supply.id, formData)
+      : await createSupply(formData);
 
     if (result.success) {
       onClose();
@@ -83,7 +90,7 @@ export default function SupplyForm({ onClose }: SupplyFormProps) {
         boxShadow: '0 10px 25px rgba(0,0,0,0.1)'
       }}>
         <h2 style={{ margin: '0 0 1.5rem', color: 'var(--color-text)' }}>
-          Record Daily Supply
+          {supply ? 'Edit Supply' : 'Record Daily Supply'}
         </h2>
 
         {error && (
@@ -95,12 +102,12 @@ export default function SupplyForm({ onClose }: SupplyFormProps) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
             <label style={labelStyle}>Date *</label>
-            <input name="supply_date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} style={inputStyle} />
+            <input name="supply_date" type="date" required defaultValue={supply?.supply_date ?? new Date().toISOString().split('T')[0]} style={inputStyle} />
           </div>
 
           <div>
             <label style={labelStyle}>Customer *</label>
-            <select name="customer_id" required style={inputStyle}>
+            <select name="customer_id" defaultValue={supply?.customer_id} required style={inputStyle}>
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
@@ -138,7 +145,7 @@ export default function SupplyForm({ onClose }: SupplyFormProps) {
 
           <div>
             <label style={labelStyle}>Remarks</label>
-            <input name="remarks" style={inputStyle} placeholder="Optional notes" />
+            <input name="remarks" defaultValue={supply?.remarks ?? ''} style={inputStyle} placeholder="Optional notes" />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
@@ -146,7 +153,7 @@ export default function SupplyForm({ onClose }: SupplyFormProps) {
               Cancel
             </button>
             <button type="submit" disabled={loading} style={btnStyle('var(--color-primary)', '#fff')}>
-              {loading ? 'Saving...' : 'Save Record'}
+              {loading ? 'Saving...' : supply ? 'Update Record' : 'Save Record'}
             </button>
           </div>
         </form>

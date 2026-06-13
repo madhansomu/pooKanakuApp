@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useLangStore } from "../../stores/langStore"
 import { t, type Lang } from "../../lib/i18n"
 import { supabase } from "../../lib/supabase"
+import { logoutAction } from "../login/actions"
 import { useUIStore } from "../../stores/uiStore"
 
 type UserInfo = {
@@ -49,7 +50,8 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push("/login")
+    await logoutAction()
+    window.location.href = '/login'
   }
 
   return (

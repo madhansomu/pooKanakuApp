@@ -28,28 +28,6 @@ export async function getExpenses() {
   return data;
 }
 
-export async function getMonthlyExpenses(month: string) {
-  // month format: YYYY-MM
-  const sb = supabaseServer();
-  const start = `${month}-01`;
-  const [year, mon] = month.split('-').map(Number);
-  const lastDay = new Date(year, mon, 0).getDate();
-  const end = `${month}-${String(lastDay).padStart(2, '0')}`;
-
-  const { data, error } = await sb
-    .from('expenses')
-    .select('*')
-    .gte('expense_date', start)
-    .lte('expense_date', end)
-    .order('expense_date', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching monthly expenses:', error);
-    return [];
-  }
-  return data;
-}
-
 export async function createExpense(formData: FormData) {
   const category = formData.get('category') as string;
   const amount = parseFloat(formData.get('amount') as string);

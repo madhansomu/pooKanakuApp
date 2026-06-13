@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import { loginAction } from './actions';
 import { useLangStore } from '../../stores/langStore';
 import { t } from '../../lib/i18n';
 import { Suspense } from 'react';
@@ -37,9 +38,10 @@ function LoginForm() {
       }
 
       if (data.session) {
-        // Use router.push — no full page reload
-        // AuthProvider will pick up the SIGNED_IN event
-        router.push(redirectTo);
+        // Set cookie for middleware to read
+        await loginAction(email, password);
+        // Force full reload so middleware picks up the cookie
+        window.location.href = redirectTo;
       }
     } catch (err: any) {
       setError(err?.message || 'Login failed');

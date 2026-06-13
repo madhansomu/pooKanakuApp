@@ -11,6 +11,7 @@ export default function FlowersPage() {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingFlower, setEditingFlower] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const { lang } = useLangStore();
 
   const fetchFlowers = async () => {
@@ -42,6 +43,11 @@ export default function FlowersPage() {
     fetchFlowers();
   };
 
+  const filteredFlowers = flowers.filter(f => 
+    f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    f.unit.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -62,9 +68,23 @@ export default function FlowersPage() {
         backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)',
         borderRadius: '8px', padding: '0.75rem', overflowX: 'auto'
       }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          <input 
+            type="text" 
+            placeholder={t(lang, 'common.search')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              padding: '0.375rem 0.5rem', width: '100%', maxWidth: '250px',
+              borderRadius: '6px', border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-background)', color: 'var(--color-text)',
+              fontSize: '0.8rem',
+            }}
+          />
+        </div>
         {loading ? (
           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>{t(lang, 'common.loading')}</p>
-        ) : flowers.length === 0 ? (
+        ) : filteredFlowers.length === 0 ? (
           <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem', fontSize: '0.8rem' }}>
             {t(lang, 'flower.noFlowers')}
           </p>
@@ -81,7 +101,7 @@ export default function FlowersPage() {
                 </tr>
               </thead>
               <tbody>
-                {flowers.map(f => (
+                {filteredFlowers.map(f => (
                   <tr key={f.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                     <td data-label="Flower" style={{ ...tdStyle, fontWeight: 500 }}>{f.name}</td>
                     <td data-label="Unit" style={tdStyle}>{f.unit}</td>

@@ -5,6 +5,14 @@ import { t } from "../lib/i18n"
 
 type Props = {
   onSaved?: () => void
+  leave?: {
+    id: string
+    leave_date: string
+    leave_type: string
+    reason?: string | null
+    custom_description?: string | null
+    notes?: string | null
+  }
 }
 
 const LEAVE_TYPES = [
@@ -27,13 +35,13 @@ const LEAVE_TYPE_KEYS: Record<string, string> = {
   "Custom": "leave.type.custom",
 }
 
-export default function ShopLeaveForm({ onSaved }: Props) {
+export default function ShopLeaveForm({ onSaved, leave }: Props) {
   const { lang } = useLangStore()
-  const [leaveDate, setLeaveDate] = useState("")
-  const [leaveType, setLeaveType] = useState(LEAVE_TYPES[0].key)
-  const [reason, setReason] = useState("")
-  const [customDescription, setCustomDescription] = useState("")
-  const [notes, setNotes] = useState("")
+  const [leaveDate, setLeaveDate] = useState(leave?.leave_date ?? "")
+  const [leaveType, setLeaveType] = useState(leave?.leave_type ?? LEAVE_TYPES[0].key)
+  const [reason, setReason] = useState(leave?.reason ?? "")
+  const [customDescription, setCustomDescription] = useState(leave?.custom_description ?? "")
+  const [notes, setNotes] = useState(leave?.notes ?? "")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -48,10 +56,12 @@ export default function ShopLeaveForm({ onSaved }: Props) {
     }
     setLoading(true)
     try {
+      const isEdit = !!leave
       const resp = await fetch("/api/shop_leaves", {
-        method: "POST",
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(isEdit && { id: leave.id }),
           leave_date: leaveDate,
           leave_type: leaveType,
           reason: reason || null,
@@ -190,7 +200,7 @@ export default function ShopLeaveForm({ onSaved }: Props) {
           fontWeight: 600, fontSize: '0.8rem',
         }}
       >
-        {loading ? t(lang, 'common.loading') : t(lang, 'common.save')}
+        {loading ? t(lang, 'common.loading') : leave ? t(lang, 'common.update') : t(lang, 'common.save')}
       </button>
     </form>
   )

@@ -30,6 +30,7 @@ export default function LeavesPage() {
   const [leaves, setLeaves] = useState<LeaveRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingLeave, setEditingLeave] = useState<LeaveRow | null>(null)
 
   const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
 
@@ -71,7 +72,7 @@ export default function LeavesPage() {
             {t(lang, 'nav.reports')}
           </a>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => { setShowForm(!showForm); setEditingLeave(null) }}
             style={{
               padding: '0.375rem 0.75rem', borderRadius: '6px', border: 'none',
               backgroundColor: 'var(--color-primary)', color: '#fff',
@@ -90,9 +91,12 @@ export default function LeavesPage() {
           borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem', maxWidth: '500px',
         }}>
           <h2 style={{ margin: '0 0 0.625rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>
-            {t(lang, 'leave.addTitle')}
+            {editingLeave ? t(lang, 'leave.editTitle') : t(lang, 'leave.addTitle')}
           </h2>
-          <ShopLeaveForm onSaved={() => { fetchLeaves(); setShowForm(false) }} />
+          <ShopLeaveForm
+            leave={editingLeave ?? undefined}
+            onSaved={() => { fetchLeaves(); setShowForm(false); setEditingLeave(null) }}
+          />
         </div>
       )}
 
@@ -139,17 +143,28 @@ export default function LeavesPage() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(l.id)}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'var(--color-no-supply)', padding: '0.15rem', fontSize: '0.75rem',
-                      flexShrink: 0,
-                    }}
-                    title={t(lang, 'common.delete')}
-                  >
-                    🗑️
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                    <button
+                      onClick={() => { setEditingLeave(l); setShowForm(true) }}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: 'var(--color-primary)', padding: '0.15rem', fontSize: '0.75rem',
+                      }}
+                      title={t(lang, 'common.edit')}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleDelete(l.id)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: 'var(--color-no-supply)', padding: '0.15rem', fontSize: '0.75rem',
+                      }}
+                      title={t(lang, 'common.delete')}
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               )
             })}

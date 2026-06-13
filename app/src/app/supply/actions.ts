@@ -69,6 +69,33 @@ export async function createSupply(formData: FormData) {
   return { success: true };
 }
 
+export async function updateSupply(id: string, formData: FormData) {
+  const customerId = formData.get('customer_id') as string;
+  const flowerTypeId = formData.get('flower_type_id') as string;
+  const supplyDate = formData.get('supply_date') as string;
+  const quantity = parseFloat(formData.get('quantity') as string);
+  const unitRate = parseFloat(formData.get('unit_rate') as string);
+  const remarks = formData.get('remarks') as string;
+
+  const sb = supabaseServer();
+  const { error } = await sb.from('daily_supplies').update({
+    customer_id: customerId,
+    flower_type_id: flowerTypeId,
+    supply_date: supplyDate,
+    quantity,
+    unit_rate: unitRate,
+    remarks,
+  }).eq('id', id);
+
+  if (error) {
+    console.error('Error updating supply:', error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/supply');
+  return { success: true };
+}
+
 export async function deleteSupply(id: string) {
   const sb = supabaseServer();
   const { error } = await sb.from('daily_supplies').delete().eq('id', id);

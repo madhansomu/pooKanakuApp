@@ -17,6 +17,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Common
     'common.save': 'Save',
+    'common.update': 'Update',
     'common.cancel': 'Cancel',
     'common.delete': 'Delete',
     'common.edit': 'Edit',
@@ -177,6 +178,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Shop Leave
     'leave.title': 'Shop Leave Management',
     'leave.addTitle': 'Add Leave',
+    'leave.editTitle': 'Edit Leave',
     'leave.date': 'Leave Date',
     'leave.type': 'Leave Type',
     'leave.reason': 'Reason',
@@ -282,6 +284,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Common
     'common.save': 'சேமி',
+    'common.update': 'புதுப்பி',
     'common.cancel': 'ரத்து',
     'common.delete': 'நீக்கு',
     'common.edit': 'திருத்து',
@@ -442,6 +445,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Shop Leave
     'leave.title': 'கடை விடுப்பு நிர்வாகம்',
     'leave.addTitle': 'விடுப்பு சேர்',
+    'leave.editTitle': 'விடுப்பு திருத்து',
     'leave.date': 'விடுப்பு தேதி',
     'leave.type': 'விடுப்பு வகை',
     'leave.reason': 'காரணம்',

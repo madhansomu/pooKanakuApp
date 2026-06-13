@@ -35,7 +35,7 @@ export async function loginAction(email: string, password: string): Promise<{ er
     path: '/',
     maxAge,
     sameSite: 'lax',
-    // secure: true, // Enable when using HTTPS
+    secure: true,
     // httpOnly: true, // Enable when middleware can read httpOnly cookies
   });
 
@@ -43,7 +43,7 @@ export async function loginAction(email: string, password: string): Promise<{ er
     path: '/',
     maxAge,
     sameSite: 'lax',
-    // secure: true,
+    secure: true,
     // httpOnly: true,
   });
 

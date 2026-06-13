@@ -27,6 +27,26 @@ export async function POST(req: Request) {
   }
 }
 
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json()
+    const { id, leave_date, leave_type, reason, custom_description, notes } = body
+    if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+    const supabase = supabaseServer()
+    const { data, error } = await supabase
+      .from("shop_leaves")
+      .update({ leave_date, leave_type, reason, custom_description, notes })
+      .eq("id", id)
+      .select()
+      .single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url)

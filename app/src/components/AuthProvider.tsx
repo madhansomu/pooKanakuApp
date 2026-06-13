@@ -1,17 +1,14 @@
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import type { User } from '../types/database';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const { setUser, setInitialized, setLoading, initialized } = useAuthStore();
-  const redirecting = useRef(false);
-
   const isLoginPage = pathname?.startsWith('/login');
 
   const loadUser = useCallback(async () => {
@@ -21,10 +18,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
       if (!session) {
         setUser(null);
-        if (!isLoginPage && !redirecting.current) {
-          redirecting.current = true;
-          router.replace('/login');
-        }
         return;
       }
 
@@ -37,7 +30,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (userRow) {
         setUser(userRow as User);
       } else {
-        // Auto-create user row if missing
         const { data: newUser } = await supabase
           .from('users')
           .insert({
@@ -50,11 +42,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           .select()
           .single();
 
-        if (newUser) {
-          setUser(newUser as User);
-        } else {
-          setUser(null);
-        }
+        setUser(newUser ? (newUser as User) : null);
       }
     } catch (err) {
       console.error('AuthProvider: failed to load user', err);
@@ -62,25 +50,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     } finally {
       setLoading(false);
     }
-  }, [setUser, setLoading, router, isLoginPage]);
+  }, [setUser, setLoading]);
 
   useEffect(() => {
-    // Load user on mount
     loadUser().then(() => setInitialized());
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Re-load user when signed in or token refreshed
           await loadUser();
-          setInitialized();
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
-          setInitialized();
-          if (!isLoginPage && !redirecting.current) {
-            redirecting.current = true;
-            router.replace('/login');
-          }
         }
       }
     );
@@ -88,11 +68,6 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => subscription.unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Reset redirect guard when pathname changes
-  useEffect(() => {
-    redirecting.current = false;
-  }, [pathname]);
 
   return <>{children}</>;
 }

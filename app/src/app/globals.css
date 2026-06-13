@@ -205,3 +205,9 @@ a, button { transition: all 0.15s ease; }
     border-radius: 6px !important;
   }
 }
+
+/* Calendar day cell status colors */
+.pkk-cell-delivered { background-color: rgba(22, 163, 74, 0.10) !important; }
+.pkk-cell-half      { background-color: rgba(245, 158, 11, 0.10) !important; }
+.pkk-cell-nosupply  { background-color: rgba(239, 68, 68, 0.10) !important; }
+.pkk-cell-holiday   { background-color: rgba(107, 114, 128, 0.10) !important; }
