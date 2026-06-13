@@ -207,6 +207,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'settings.themeLight': 'Light',
     'settings.themeDark': 'Dark',
     'settings.saved': 'Settings saved!',
+    'settings.logoutConfirm': 'Are you sure you want to sign out?',
+    'settings.loggedOut': 'Signed out successfully',
+    'settings.logoutError': 'Failed to sign out',
 
     // Login
     'login.email': 'Email Address',
@@ -475,6 +478,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     'settings.themeLight': 'ஒளி',
     'settings.themeDark': 'இருண்ட',
     'settings.saved': 'அமைப்புகள் சேமிக்கப்பட்டன!',
+    'settings.logoutConfirm': 'நீங்கள் நிச்சயமாக வெளியேற விரும்புகிறீர்களா?',
+    'settings.loggedOut': 'வெற்றிகரமாக வெளியேறியது',
+    'settings.logoutError': 'வெளியேறுவதில் பிழை',
 
     // Login
     'login.email': 'மின்னஞ்சல் முகவரி',

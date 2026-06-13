@@ -1,57 +1,43 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React from "react"
 import { useRouter } from "next/navigation"
 import { useLangStore } from "../../stores/langStore"
+import { useAuthStore } from "../../stores/authStore"
+import { useUIStore } from "../../stores/uiStore"
+import { useToastStore } from "../../stores/toastStore"
+import { useConfirmStore } from "../../stores/confirmStore"
 import { t, type Lang } from "../../lib/i18n"
 import { supabase } from "../../lib/supabase"
 import { logoutAction } from "../login/actions"
-import { useUIStore } from "../../stores/uiStore"
-
-type UserInfo = {
-  email: string
-  full_name: string | null
-  role: string
-}
 
 export default function SettingsPage() {
   const router = useRouter()
   const { lang, setLang } = useLangStore()
   const { darkMode, toggleDarkMode } = useUIStore()
-  const [user, setUser] = useState<UserInfo | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-          router.replace('/login')
-          return
-        }
-        const { data: userRow } = await supabase
-          .from('users')
-          .select('email, full_name, role')
-          .eq('auth_uid', session.user.id)
-          .maybeSingle()
-        if (userRow) {
-          setUser(userRow as UserInfo)
-        } else {
-          setUser({ email: session.user.email || '', full_name: null, role: 'Admin' })
-        }
-      } catch {
-        setUser({ email: 'admin@pookanaku.com', full_name: 'Admin', role: 'Admin' })
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [router])
+  const { user, initialized, loading } = useAuthStore()
+  const addToast = useToastStore(s => s.addToast)
+  const showConfirm = useConfirmStore(s => s.showConfirm)
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    await logoutAction()
-    window.location.href = '/login'
+    const confirmed = await showConfirm(t(lang, 'settings.logoutConfirm'))
+    if (!confirmed) return
+    try {
+      await supabase.auth.signOut()
+      await logoutAction()
+      addToast(t(lang, 'settings.loggedOut'), 'success')
+      window.location.href = '/login'
+    } catch {
+      addToast(t(lang, 'settings.logoutError'), 'error')
+    }
+  }
+
+  if (!loading && !initialized) {
+    return (
+      <div style={{ maxWidth: '480px', padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+        {t(lang, 'common.loading')}
+      </div>
+    )
   }
 
   return (
