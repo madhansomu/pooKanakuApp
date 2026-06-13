@@ -95,7 +95,7 @@ CREATE TABLE payments (
 -- 8. Expenses Table
 CREATE TABLE expenses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    category VARCHAR(50) CHECK (category IN ('Flower Purchase', 'Transportation', 'Electricity', 'Packaging', 'Miscellaneous')),
+    category VARCHAR(50) CHECK (category IN ('Flower Purchase', 'Transportation', 'Salary', 'Electricity', 'Packaging', 'Miscellaneous')),
     amount DECIMAL(12, 2) NOT NULL,
     expense_date DATE NOT NULL,
     description TEXT,

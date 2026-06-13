@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { getSupplies, deleteSupply } from './actions';
 import SupplyForm from '../../components/supply/SupplyForm';
 import { useLangStore } from '../../stores/langStore';
+import { useConfirmStore } from '../../stores/confirmStore';
 import { t } from '../../lib/i18n';
 
 export default function SupplyPage() {
@@ -13,6 +14,7 @@ export default function SupplyPage() {
   const [editingSupply, setEditingSupply] = useState<any>(null);
 
   const { lang } = useLangStore();
+  const showConfirm = useConfirmStore(s => s.showConfirm);
 
   const fetchSupplies = async () => {
     setLoading(true);
@@ -26,7 +28,7 @@ export default function SupplyPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm(t(lang, 'confirm.deleteSupply'))) {
+    if (await showConfirm(t(lang, 'confirm.deleteSupply'))) {
       await deleteSupply(id);
       fetchSupplies();
     }

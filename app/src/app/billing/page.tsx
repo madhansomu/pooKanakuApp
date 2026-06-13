@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { getInvoices, generateInvoices, deleteInvoice } from './actions';
 import Link from 'next/link';
 import { useLangStore } from '../../stores/langStore';
+import { useToastStore } from '../../stores/toastStore';
+import { useConfirmStore } from '../../stores/confirmStore';
 import { t } from '../../lib/i18n';
 
 export default function BillingPage() {
@@ -15,6 +17,8 @@ export default function BillingPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
   const { lang } = useLangStore();
+  const addToast = useToastStore(s => s.addToast);
+  const showConfirm = useConfirmStore(s => s.showConfirm);
 
   const fetchInvoices = async () => {
     setLoading(true);
@@ -28,23 +32,23 @@ export default function BillingPage() {
   }, []);
 
   const handleGenerate = async () => {
-    if (!confirm(`${t(lang, 'bill.generateConfirm')} ${selectedMonth}?`)) return;
+    if (!await showConfirm(`${t(lang, 'bill.generateConfirm')} ${selectedMonth}?`)) return;
     setGenerating(true);
     try {
       const results = await generateInvoices(selectedMonth);
       const generated = results.filter(r => !r.skipped).length;
       const skipped = results.filter(r => r.skipped).length;
-      alert(`${t(lang, 'bill.generateDone')} ${generated} ${t(lang, 'bill.invoice')} ${skipped} ${t(lang, 'bill.generateSkipped')}`);
+      addToast(`${t(lang, 'bill.generateDone')} ${generated} ${t(lang, 'bill.invoice')} ${skipped} ${t(lang, 'bill.generateSkipped')}`, 'success');
       fetchInvoices();
     } catch (e: any) {
-      alert(t(lang, 'bill.generateError') + (e.message || e));
+      addToast(t(lang, 'bill.generateError') + (e.message || e), 'error');
     } finally {
       setGenerating(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm(t(lang, 'bill.deleteConfirm'))) {
+    if (await showConfirm(t(lang, 'bill.deleteConfirm'))) {
       await deleteInvoice(id);
       fetchInvoices();
     }

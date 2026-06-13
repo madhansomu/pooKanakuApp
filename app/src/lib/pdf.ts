@@ -26,28 +26,36 @@ interface InvoicePDFData {
   }[];
 }
 
+const PAGE_WIDTH = 595.28;
+const PAGE_HEIGHT = 841.87;
+const MARGIN_LEFT = 50;
+const MARGIN_RIGHT = 545;
+const ROW_HEIGHT = 18;
+const HEADER_HEIGHT = 220; // space for header + customer info + table header
+const FOOTER_HEIGHT = 80;
+
 export async function generateInvoicePDF(data: InvoicePDFData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595.28, 841.87]); // A4 size
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   const { invoice, customer, items } = data;
   const monthLabel = new Date(invoice.billing_month).toLocaleDateString('default', { month: 'long', year: 'numeric' });
 
-  let y = 780;
+  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  let y = PAGE_HEIGHT - 60;
 
   // Header
-  page.drawText('PooKanakuApp', { x: 50, y, size: 22, font: boldFont, color: rgb(0.18, 0.49, 0.20) });
+  page.drawText('PooKanakuApp', { x: MARGIN_LEFT, y, size: 22, font: boldFont, color: rgb(0.18, 0.49, 0.20) });
   y -= 20;
-  page.drawText('Flower Ledger Pro', { x: 50, y, size: 10, font, color: rgb(0.4, 0.4, 0.4) });
+  page.drawText('Flower Ledger Pro', { x: MARGIN_LEFT, y, size: 10, font, color: rgb(0.4, 0.4, 0.4) });
 
   // Invoice title
-  page.drawText('INVOICE', { x: 420, y: 780, size: 20, font: boldFont, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText('INVOICE', { x: 420, y: PAGE_HEIGHT - 60, size: 20, font: boldFont, color: rgb(0.2, 0.2, 0.2) });
   y -= 10;
 
   // Divider
-  page.drawLine({ start: { x: 50, y: y + 15 }, end: { x: 545, y: y + 15 }, thickness: 1, color: rgb(0.85, 0.85, 0.85) });
+  page.drawLine({ start: { x: MARGIN_LEFT, y: y + 15 }, end: { x: MARGIN_RIGHT, y: y + 15 }, thickness: 1, color: rgb(0.85, 0.85, 0.85) });
 
   // Invoice details
   y -= 15;
@@ -59,67 +67,86 @@ export async function generateInvoicePDF(data: InvoicePDFData): Promise<Uint8Arr
 
   // Customer info
   y -= 25;
-  page.drawText('BILL TO', { x: 50, y, size: 8, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+  page.drawText('BILL TO', { x: MARGIN_LEFT, y, size: 8, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
   y -= 15;
-  page.drawText(customer.name, { x: 50, y, size: 12, font: boldFont });
+  page.drawText(customer.name, { x: MARGIN_LEFT, y, size: 12, font: boldFont });
   if (customer.phone_number) {
     y -= 15;
-    page.drawText(customer.phone_number, { x: 50, y, size: 9, font, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(customer.phone_number, { x: MARGIN_LEFT, y, size: 9, font, color: rgb(0.4, 0.4, 0.4) });
   }
   if (customer.address) {
     y -= 15;
-    page.drawText(customer.address, { x: 50, y, size: 9, font, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(customer.address, { x: MARGIN_LEFT, y, size: 9, font, color: rgb(0.4, 0.4, 0.4) });
   }
 
   // Billing period
   y -= 25;
-  page.drawText('BILLING PERIOD', { x: 50, y, size: 8, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+  page.drawText('BILLING PERIOD', { x: MARGIN_LEFT, y, size: 8, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
   y -= 15;
-  page.drawText(monthLabel, { x: 50, y, size: 11, font });
+  page.drawText(monthLabel, { x: MARGIN_LEFT, y, size: 11, font });
 
   // Table header
   y -= 35;
-  page.drawLine({ start: { x: 50, y: y + 10 }, end: { x: 545, y: y + 10 }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
-  page.drawText('Flower Type', { x: 50, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+  page.drawLine({ start: { x: MARGIN_LEFT, y: y + 10 }, end: { x: MARGIN_RIGHT, y: y + 10 }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
+  page.drawText('Flower Type', { x: MARGIN_LEFT, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
   page.drawText('Unit', { x: 200, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
   page.drawText('Quantity', { x: 280, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
   page.drawText('Rate', { x: 370, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
   page.drawText('Amount', { x: 460, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
 
-  // Table rows
+  // Table rows with page breaks
   y -= 20;
   for (const item of items) {
-    page.drawText(item.flower_name || '-', { x: 50, y, size: 9, font });
+    if (y < FOOTER_HEIGHT + 60) {
+      // Add footer to current page
+      page.drawLine({ start: { x: MARGIN_LEFT, y: 40 }, end: { x: MARGIN_RIGHT, y: 40 }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
+      page.drawText('Continued...', { x: MARGIN_LEFT, y: 28, size: 8, font, color: rgb(0.5, 0.5, 0.5) });
+
+      // New page
+      page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      y = PAGE_HEIGHT - 60;
+
+      // Reprint table header on new page
+      page.drawText('Flower Type', { x: MARGIN_LEFT, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+      page.drawText('Unit', { x: 200, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+      page.drawText('Quantity', { x: 280, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+      page.drawText('Rate', { x: 370, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+      page.drawText('Amount', { x: 460, y, size: 9, font: boldFont, color: rgb(0.5, 0.5, 0.5) });
+      page.drawLine({ start: { x: MARGIN_LEFT, y: y - 5 }, end: { x: MARGIN_RIGHT, y: y - 5 }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
+      y -= 20;
+    }
+
+    page.drawText(item.flower_name || '-', { x: MARGIN_LEFT, y, size: 9, font });
     page.drawText(item.unit || '-', { x: 200, y, size: 9, font });
     page.drawText(item.quantity.toFixed(2), { x: 280, y, size: 9, font });
-    page.drawText(`Rs.${item.rate.toFixed(2)}`, { x: 370, y, size: 9, font });
-    page.drawText(`Rs.${item.total.toLocaleString()}`, { x: 460, y, size: 9, font: boldFont });
-    y -= 18;
+    page.drawText(`\u20B9${item.rate.toFixed(2)}`, { x: 370, y, size: 9, font });
+    page.drawText(`\u20B9${item.total.toLocaleString()}`, { x: 460, y, size: 9, font: boldFont });
+    y -= ROW_HEIGHT;
   }
 
   // Divider
   y -= 5;
-  page.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
+  page.drawLine({ start: { x: MARGIN_LEFT, y }, end: { x: MARGIN_RIGHT, y }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
 
   // Totals
   y -= 25;
   const totalsX = 380;
   page.drawText('Total Amount:', { x: totalsX, y, size: 10, font });
-  page.drawText(`Rs.${invoice.total_amount.toLocaleString()}`, { x: 460, y, size: 10, font: boldFont });
+  page.drawText(`\u20B9${invoice.total_amount.toLocaleString()}`, { x: 460, y, size: 10, font: boldFont });
 
   y -= 20;
   page.drawText('Paid:', { x: totalsX, y, size: 10, font, color: rgb(0.18, 0.49, 0.20) });
-  page.drawText(`Rs.${invoice.paid_amount.toLocaleString()}`, { x: 460, y, size: 10, font, color: rgb(0.18, 0.49, 0.20) });
+  page.drawText(`\u20B9${invoice.paid_amount.toLocaleString()}`, { x: 460, y, size: 10, font, color: rgb(0.18, 0.49, 0.20) });
 
   y -= 25;
-  page.drawLine({ start: { x: totalsX, y: y + 10 }, end: { x: 545, y: y + 10 }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
+  page.drawLine({ start: { x: totalsX, y: y + 10 }, end: { x: MARGIN_RIGHT, y: y + 10 }, thickness: 1, color: rgb(0.2, 0.2, 0.2) });
   page.drawText('Outstanding:', { x: totalsX, y, size: 12, font: boldFont });
-  page.drawText(`Rs.${invoice.outstanding_amount.toLocaleString()}`, { x: 460, y, size: 12, font: boldFont, color: rgb(0.9, 0.22, 0.22) });
+  page.drawText(`\u20B9${invoice.outstanding_amount.toLocaleString()}`, { x: 460, y, size: 12, font: boldFont, color: rgb(0.9, 0.22, 0.22) });
 
   // Footer
   y -= 60;
-  page.drawLine({ start: { x: 50, y: y + 20 }, end: { x: 545, y: y + 20 }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
-  page.drawText('Thank you for your business!', { x: 50, y, size: 9, font, color: rgb(0.5, 0.5, 0.5) });
+  page.drawLine({ start: { x: MARGIN_LEFT, y: y + 20 }, end: { x: MARGIN_RIGHT, y: y + 20 }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
+  page.drawText('Thank you for your business!', { x: MARGIN_LEFT, y, size: 9, font, color: rgb(0.5, 0.5, 0.5) });
   page.drawText('PooKanakuApp — Flower Ledger Pro', { x: 380, y, size: 8, font, color: rgb(0.7, 0.7, 0.7) });
 
   const pdfBytes = await pdfDoc.save();

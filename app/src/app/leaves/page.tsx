@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import ShopLeaveForm from "../../components/ShopLeaveForm"
 import { useLangStore } from "../../stores/langStore"
+import { useConfirmStore } from "../../stores/confirmStore"
 import { t } from "../../lib/i18n"
 
 type LeaveRow = {
@@ -27,6 +28,7 @@ const LEAVE_ICONS: Record<string, string> = {
 export default function LeavesPage() {
   const router = useRouter()
   const { lang } = useLangStore()
+  const showConfirm = useConfirmStore(s => s.showConfirm)
   const [leaves, setLeaves] = useState<LeaveRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -51,7 +53,7 @@ export default function LeavesPage() {
   useEffect(() => { fetchLeaves() }, [fetchLeaves])
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t(lang, 'common.confirm'))) return
+    if (!await showConfirm(t(lang, 'common.confirm'))) return
     try {
       await fetch(`/api/shop_leaves?id=${id}`, { method: 'DELETE' })
       fetchLeaves()

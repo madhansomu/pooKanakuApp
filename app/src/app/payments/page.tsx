@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { getPayments, deletePayment } from './actions';
 import PaymentForm from '../../components/payments/PaymentForm';
 import { useLangStore } from '../../stores/langStore';
+import { useConfirmStore } from '../../stores/confirmStore';
 import { t } from '../../lib/i18n';
 
 export default function PaymentsPage() {
@@ -11,6 +12,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { lang } = useLangStore();
+  const showConfirm = useConfirmStore(s => s.showConfirm);
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -24,7 +26,7 @@ export default function PaymentsPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm(t(lang, 'confirm.deletePayment'))) {
+    if (await showConfirm(t(lang, 'confirm.deletePayment'))) {
       await deletePayment(id);
       fetchPayments();
     }

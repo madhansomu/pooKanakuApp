@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { getFlowers, deleteFlower } from './actions';
 import FlowerForm from '../../components/flowers/FlowerForm';
 import { useLangStore } from '../../stores/langStore';
+import { useConfirmStore } from '../../stores/confirmStore';
 import { t } from '../../lib/i18n';
 
 export default function FlowersPage() {
@@ -13,6 +14,7 @@ export default function FlowersPage() {
   const [editingFlower, setEditingFlower] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { lang } = useLangStore();
+  const showConfirm = useConfirmStore(s => s.showConfirm);
 
   const fetchFlowers = async () => {
     setLoading(true);
@@ -31,7 +33,7 @@ export default function FlowersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm(t(lang, 'confirm.deleteFlower'))) {
+    if (await showConfirm(t(lang, 'confirm.deleteFlower'))) {
       await deleteFlower(id);
       fetchFlowers();
     }

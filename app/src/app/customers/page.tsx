@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { getCustomers, deleteCustomer } from './actions';
 import CustomerForm from '../../components/customers/CustomerForm';
 import { useLangStore } from '../../stores/langStore';
+import { useConfirmStore } from '../../stores/confirmStore';
 import { t } from '../../lib/i18n';
 
 export default function CustomersPage() {
@@ -13,6 +14,7 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { lang } = useLangStore();
+  const showConfirm = useConfirmStore(s => s.showConfirm);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -31,7 +33,7 @@ export default function CustomersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm(t(lang, 'confirm.deleteCustomer'))) {
+    if (await showConfirm(t(lang, 'confirm.deleteCustomer'))) {
       await deleteCustomer(id);
       fetchCustomers();
     }

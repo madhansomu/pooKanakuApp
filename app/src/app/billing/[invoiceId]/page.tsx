@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getInvoiceById, getInvoicePDF } from '../actions';
+import { useToastStore } from '../../../stores/toastStore';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -12,6 +13,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const addToast = useToastStore(s => s.addToast);
 
   useEffect(() => {
     async function load() {
@@ -27,7 +29,7 @@ export default function InvoiceDetailPage() {
     try {
       const base64 = await getInvoicePDF(invoiceId);
       if (!base64) {
-        alert('Failed to generate PDF');
+        addToast('Failed to generate PDF', 'error');
         return;
       }
       // Convert base64 to blob and trigger download
@@ -46,7 +48,7 @@ export default function InvoiceDetailPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      alert('Error generating PDF');
+      addToast('Error generating PDF', 'error');
     } finally {
       setDownloadingPdf(false);
     }
@@ -88,7 +90,7 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* Invoice card */}
-      <div style={{
+      <div className="pkk-invoice-card" style={{
         backgroundColor: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
         borderRadius: '12px',

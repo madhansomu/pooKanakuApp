@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -9,6 +9,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
 import { colorForLeave } from '../../lib/leaveColors';
 import { useLangStore } from '../../stores/langStore';
+import { useToastStore } from '../../stores/toastStore';
 import { t } from '../../lib/i18n';
 import { getCustomers } from '../customers/actions';
 
@@ -33,19 +34,11 @@ type ShopLeaveRow = {
 
 const STATUS_COLORS: Record<string, string> = {
   Delivered: '#16a34a',
-  'Half Supply': '#f59e0b',
+  'Half Supply': '#eab308',
   'No Supply': '#ef4444',
-  Holiday: '#6b7280',
+  Holiday: '#3b82f6',
 };
 
-const STATUS_BG: Record<string, string> = {
-  Delivered: '#dcfce7',
-  'Half Supply': '#fef3c7',
-  'No Supply': '#fee2e2',
-  Holiday: '#f3f4f6',
-};
-
-// Customer color palette — distinct colors for each customer
 const CUSTOMER_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#0ea5e9',
   '#14b8a6', '#84cc16', '#f97316', '#06b6d4', '#a855f7',
@@ -63,9 +56,9 @@ function getCustomerName(customerId: string, customers: Customer[]): string {
 
 const LEGEND_ITEMS = [
   { labelKey: 'cal.delivered', color: '#16a34a' },
-  { labelKey: 'cal.status.halfSupply', color: '#f59e0b' },
+  { labelKey: 'cal.status.halfSupply', color: '#eab308' },
   { labelKey: 'cal.status.noSupply', color: '#ef4444' },
-  { labelKey: 'cal.status.holiday', color: '#6b7280' },
+  { labelKey: 'cal.status.holiday', color: '#3b82f6' },
   { labelKey: 'cal.leave', color: '#9CA3AF' },
 ];
 
@@ -81,6 +74,8 @@ function CalendarPage() {
   const searchParams = useSearchParams();
   const initialCustomer = searchParams.get('customer') || '';
   const { lang } = useLangStore();
+  const addToast = useToastStore(s => s.addToast);
+  const calendarRef = useRef<any>(null);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<string>(initialCustomer);
@@ -88,6 +83,8 @@ function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeEntry, setActiveEntry] = useState<Entry | null>(null);
   const [currentView, setCurrentView] = useState<string>('dayGridMonth');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [legendExpanded, setLegendExpanded] = useState(false);
 
   async function fetchCustomers() {
     const rows = await getCustomers();
@@ -117,7 +114,7 @@ function CalendarPage() {
       const leaves = json?.rows || [];
       const leaveEvents: CalendarEvent[] = leaves.map((l) => ({
         id: `leave-${l.id}`,
-        title: `🏖️ ${l.leave_type}`,
+        title: l.leave_type,
         start: l.leave_date,
         backgroundColor: colorForLeave(l.leave_type),
         borderColor: colorForLeave(l.leave_type),
@@ -152,7 +149,6 @@ function CalendarPage() {
   useEffect(() => { fetchEntries(selectedCustomer || undefined); }, [selectedCustomer, fetchEntries]);
   useEffect(() => { loadLeaves(); }, [loadLeaves]);
 
-  // Build date -> entries map for day cell coloring
   const dateStatusMap = useMemo(() => {
     const map: Record<string, Record<string, number>> = {};
     events.filter(e => !e.extendedProps?.isLeave).forEach(e => {
@@ -163,7 +159,6 @@ function CalendarPage() {
     return map;
   }, [events]);
 
-  // Build date -> customer colors map for day cell dots
   const dateCustomerColors = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     events.filter(e => !e.extendedProps?.isLeave && e.extendedProps?.customer_id).forEach(e => {
@@ -173,7 +168,18 @@ function CalendarPage() {
     return map;
   }, [events, customers]);
 
+  const dateCustomerNames = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    events.filter(e => !e.extendedProps?.isLeave && e.extendedProps?.customer_id).forEach(e => {
+      if (!map[e.start]) map[e.start] = [];
+      const name = getCustomerName(e.extendedProps!.customer_id!, customers);
+      if (!map[e.start].includes(name)) map[e.start].push(name);
+    });
+    return map;
+  }, [events, customers]);
+
   function handleDateClick(arg: DateClickArg) {
+    setSelectedDate(arg.dateStr);
     const found = events.find(
       e => e.start === arg.dateStr && !e.extendedProps?.isLeave &&
         (!selectedCustomer || e.extendedProps?.customer_id === selectedCustomer)
@@ -194,6 +200,7 @@ function CalendarPage() {
       body: JSON.stringify(entry),
     });
     setModalOpen(false);
+    addToast(t(lang, 'cal.saved'), 'success');
     fetchEntries(selectedCustomer || undefined);
     loadLeaves();
   }
@@ -211,25 +218,56 @@ function CalendarPage() {
   return (
     <div>
       <style>{`
-        .pkk-day-cell { position: relative; min-height: 3.5rem; }
-        .pkk-day-bg { position: absolute; inset: 2px; border-radius: 4px; opacity: 0.18; pointer-events: none; }
-        .pkk-day-dots { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; justify-content: center; }
-        .pkk-day-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-        .pkk-event-chip { display: flex; align-items: center; gap: 3px; padding: 1px 4px; border-radius: 3px; font-size: 0.55rem; line-height: 1.3; margin-bottom: 1px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .pkk-event-chip {
+          display: flex; align-items: center; gap: 3px;
+          padding: 2px 5px; border-radius: 3px; font-size: 0.55rem;
+          line-height: 1.3; margin-bottom: 1px; cursor: pointer;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+          transition: opacity 0.15s;
+        }
+        .pkk-event-chip:hover { opacity: 0.85; }
         .pkk-event-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
         .pkk-event-label { overflow: hidden; text-overflow: ellipsis; }
         .fc .fc-daygrid-day-number { font-size: 0.7rem; padding: 2px 6px; }
         .fc .fc-col-header-cell-cushion { font-size: 0.7rem; padding: 4px 0; }
+        .fc .fc-day-today { background-color: rgba(46, 125, 50, 0.06) !important; }
+        .fc .fc-day-today .fc-daygrid-day-number { font-weight: 700; color: var(--color-primary); }
+        .fc .fc-daygrid-day.fc-day-selected {
+          box-shadow: inset 0 0 0 2px var(--color-primary);
+          border-radius: 4px;
+        }
+        .pkk-daynames { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.03em; }
+        .pkk-today-badge {
+          display: inline-block; padding: 0.15rem 0.375rem;
+          background: var(--color-primary); color: #fff;
+          border-radius: 4px; font-size: 0.6rem; font-weight: 600;
+        }
+        .pkk-legend-scroll {
+          display: flex; gap: 0.5rem; flex-wrap: nowrap;
+          overflow-x: auto; padding-bottom: 2px;
+          scrollbar-width: thin;
+        }
+        .pkk-legend-scroll::-webkit-scrollbar { height: 3px; }
+        .pkk-legend-scroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+        .pkk-summary-pill {
+          display: flex; align-items: center; gap: 0.25rem;
+          padding: 0.25rem 0.5rem; border-radius: 6px;
+          background: var(--color-surface); border: 1px solid var(--color-border);
+          font-size: 0.65rem; flex-shrink: 0; white-space: nowrap;
+        }
         @media (max-width: 640px) {
-          .pkk-day-cell { min-height: 2.5rem; }
-          .pkk-event-chip { font-size: 0.5rem; padding: 0 3px; }
+          .pkk-event-chip { font-size: 0.5rem; padding: 1px 3px; }
           .fc .fc-daygrid-day-number { font-size: 0.6rem; }
+          .pkk-summary-pill { font-size: 0.55rem; padding: 0.2rem 0.375rem; }
         }
       `}</style>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)' }}>{t(lang, 'cal.title')}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)' }}>{t(lang, 'cal.title')}</h1>
+          <span className="pkk-today-badge">Today</span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <select
             value={selectedCustomer}
@@ -256,6 +294,7 @@ function CalendarPage() {
                   padding: '0.3rem 0.625rem', fontSize: '0.7rem', fontWeight: 500, border: 'none', cursor: 'pointer',
                   backgroundColor: currentView === v.key ? 'var(--color-primary)' : 'var(--color-surface)',
                   color: currentView === v.key ? '#fff' : 'var(--color-text)',
+                  transition: 'background-color 0.15s',
                 }}
               >
                 {v.label}
@@ -269,17 +308,12 @@ function CalendarPage() {
       <div style={{ display: 'flex', gap: '0.375rem', marginBottom: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
         {[
           { label: t(lang, 'cal.delivered'), count: summary.delivered, color: '#16a34a' },
-          { label: t(lang, 'cal.half'), count: summary.half, color: '#f59e0b' },
+          { label: t(lang, 'cal.half'), count: summary.half, color: '#eab308' },
           { label: t(lang, 'cal.noSupply'), count: summary.noSupply, color: '#ef4444' },
-          { label: t(lang, 'cal.holiday'), count: summary.holiday, color: '#6b7280' },
+          { label: t(lang, 'cal.holiday'), count: summary.holiday, color: '#3b82f6' },
           { label: t(lang, 'cal.leave'), count: summary.leaves, color: '#9CA3AF' },
         ].map(s => (
-          <div key={s.label} style={{
-            display: 'flex', alignItems: 'center', gap: '0.25rem',
-            padding: '0.25rem 0.5rem', borderRadius: '6px', whiteSpace: 'nowrap',
-            backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)',
-            fontSize: '0.65rem', flexShrink: 0,
-          }}>
+          <div key={s.label} className="pkk-summary-pill">
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: s.color, flexShrink: 0 }} />
             <span style={{ color: 'var(--color-text-muted)' }}>{s.label}</span>
             <span style={{ fontWeight: 600 }}>{s.count}</span>
@@ -287,26 +321,38 @@ function CalendarPage() {
         ))}
       </div>
 
-      {/* Legend — status + customer colors */}
-      <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '0.5rem', alignItems: 'center' }}>
+      {/* Legend — status colors */}
+      <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap', marginBottom: '0.375rem', alignItems: 'center' }}>
         {LEGEND_ITEMS.map(item => (
           <div key={item.labelKey} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.6rem' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: item.color, flexShrink: 0 }} />
             <span style={{ color: 'var(--color-text-muted)' }}>{t(lang, item.labelKey)}</span>
           </div>
         ))}
-        {customers.length > 0 && (
-          <>
-            <span style={{ width: '1px', height: '12px', backgroundColor: 'var(--color-border)', margin: '0 0.25rem' }} />
-            {customers.slice(0, 8).map(c => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.6rem' }}>
+      </div>
+
+      {/* Legend — customer colors */}
+      {customers.length > 0 && (
+        <div style={{ marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
+            <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Customers</span>
+            <button
+              onClick={() => setLegendExpanded(!legendExpanded)}
+              style={{ fontSize: '0.55rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+            >
+              {legendExpanded ? 'Show less' : `Show all (${customers.length})`}
+            </button>
+          </div>
+          <div className="pkk-legend-scroll" style={{ maxHeight: legendExpanded ? 'none' : '1.5rem' }}>
+            {(legendExpanded ? customers : customers.slice(0, 12)).map(c => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.6rem', flexShrink: 0 }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: getCustomerColor(c.id, customers), flexShrink: 0 }} />
                 <span style={{ color: 'var(--color-text-muted)' }}>{c.name}</span>
               </div>
             ))}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Calendar */}
       <div style={{
@@ -316,6 +362,7 @@ function CalendarPage() {
         padding: '0.5rem',
       }}>
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView={currentView}
           headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' }}
@@ -329,48 +376,73 @@ function CalendarPage() {
           slotMinTime="05:00:00"
           slotMaxTime="22:00:00"
           dayCellClassNames={(arg) => {
+            const classes: string[] = [];
             const dateStr = arg.dateStr;
+
+            // Today highlight
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            if (dateStr === todayStr) classes.push('fc-day-today');
+
+            // Selected date highlight
+            if (dateStr === selectedDate) classes.push('fc-day-selected');
+
+            // Status-based background tint
             const statuses = dateStatusMap[dateStr];
-            if (!statuses) return '';
-            // Pick dominant status (most entries)
-            const dominant = Object.entries(statuses).sort((a, b) => b[1] - a[1])[0][0];
-            const bgClass: Record<string, string> = {
-              Delivered: 'pkk-cell-delivered',
-              'Half Supply': 'pkk-cell-half',
-              'No Supply': 'pkk-cell-nosupply',
-              Holiday: 'pkk-cell-holiday',
-            };
-            return bgClass[dominant] || '';
+            if (statuses) {
+              const dominant = Object.entries(statuses).sort((a, b) => b[1] - a[1])[0][0];
+              const bgClass: Record<string, string> = {
+                Delivered: 'pkk-cell-delivered',
+                'Half Supply': 'pkk-cell-half',
+                'No Supply': 'pkk-cell-nosupply',
+                Holiday: 'pkk-cell-holiday',
+              };
+              if (bgClass[dominant]) classes.push(bgClass[dominant]);
+            }
+
+            return classes.join(' ');
           }}
           dayCellContent={(arg) => {
             const dateStr = arg.dateStr;
             const dayEvents = events.filter(e => e.start === dateStr && !e.extendedProps?.isLeave);
-            const customerDots = dateCustomerColors[dateStr];
-            if (dayEvents.length === 0 && !customerDots) return arg.dayNumberText;
+            const dayLeaves = events.filter(e => e.start === dateStr && e.extendedProps?.isLeave);
+            const customerNames = dateCustomerNames[dateStr] || [];
+            const totalCount = dayEvents.length;
+            if (totalCount === 0 && dayLeaves.length === 0) return arg.dayNumberText;
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-                <span>{arg.dayNumberText}</span>
-                {dayEvents.length > 0 && (
-                  <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '1px' }}>
-                    {dayEvents.slice(0, 4).map(e => {
-                      const cid = e.extendedProps?.customer_id;
-                      const dotColor = cid ? getCustomerColor(cid, customers) : STATUS_COLORS[e.title] || '#6b7280';
-                      return (
-                        <span
-                          key={e.id}
-                          title={`${getCustomerName(cid || '', customers)}: ${e.title}`}
-                          style={{
-                            width: '6px', height: '6px', borderRadius: '50%',
-                            backgroundColor: dotColor, flexShrink: 0,
-                          }}
-                        />
-                      );
-                    })}
-                    {dayEvents.length > 4 && (
-                      <span style={{ fontSize: '0.45rem', color: 'var(--color-text-muted)' }}>+{dayEvents.length - 4}</span>
-                    )}
-                  </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', position: 'relative' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.7rem' }}>{arg.dayNumberText}</span>
+                {totalCount > 0 && (
+                  <>
+                    <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '2px' }}>
+                      {dayEvents.slice(0, 5).map(e => {
+                        const cid = e.extendedProps?.customer_id;
+                        const dotColor = cid ? getCustomerColor(cid, customers) : STATUS_COLORS[e.title] || '#6b7280';
+                        return (
+                          <span
+                            key={e.id}
+                            title={`${getCustomerName(cid || '', customers)}: ${e.title}`}
+                            style={{
+                              width: '6px', height: '6px', borderRadius: '50%',
+                              backgroundColor: dotColor, flexShrink: 0,
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <span style={{
+                      fontSize: '0.45rem', fontWeight: 600, color: 'var(--color-text-muted)',
+                      marginTop: '1px',
+                    }}>
+                      {totalCount} {totalCount === 1 ? 'entry' : 'entries'}
+                    </span>
+                  </>
+                )}
+                {dayLeaves.length > 0 && (
+                  <span style={{ fontSize: '0.5rem', marginTop: '1px' }}>
+                    {dayLeaves.map(l => l.extendedProps?.leave_type?.charAt(0)).filter(Boolean).join('')}
+                  </span>
                 )}
               </div>
             );
@@ -380,7 +452,8 @@ function CalendarPage() {
             if (ep?.isLeave) {
               return (
                 <div className="pkk-event-chip" style={{ backgroundColor: arg.event.backgroundColor, color: '#fff' }}>
-                  <span>{arg.event.title}</span>
+                  <span>🏖️</span>
+                  <span className="pkk-event-label">{arg.event.title}</span>
                 </div>
               );
             }

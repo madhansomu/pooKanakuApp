@@ -4,10 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { getExpenses, deleteExpense } from './actions';
 import ExpenseForm from '../../components/expenses/ExpenseForm';
 import { useLangStore } from '../../stores/langStore';
+import { useConfirmStore } from '../../stores/confirmStore';
 import { t } from '../../lib/i18n';
 
 export default function ExpensesPage() {
   const { lang } = useLangStore();
+  const showConfirm = useConfirmStore(s => s.showConfirm);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -28,7 +30,7 @@ export default function ExpensesPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm(t(lang, 'confirm.deleteExpense'))) {
+    if (await showConfirm(t(lang, 'confirm.deleteExpense'))) {
       await deleteExpense(id);
       fetchExpenses();
     }
