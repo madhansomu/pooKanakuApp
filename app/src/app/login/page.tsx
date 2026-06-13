@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
-import { loginAction } from './actions';
+import { setSessionCookies } from './actions';
 import { useLangStore } from '../../stores/langStore';
 import { t } from '../../lib/i18n';
 import { Suspense } from 'react';
@@ -38,9 +38,19 @@ function LoginForm() {
       }
 
       if (data.session) {
-        // Set cookie for middleware to read
-        await loginAction(email, password);
-        // Force full reload so middleware picks up the cookie
+        // Set cookies for middleware using tokens from the client-side session
+        const { error: cookieError } = await setSessionCookies(
+          data.session.access_token,
+          data.session.refresh_token
+        );
+
+        if (cookieError) {
+          setError(cookieError);
+          setLoading(false);
+          return;
+        }
+
+        // Full reload so middleware picks up the cookie
         window.location.href = redirectTo;
       }
     } catch (err: any) {
