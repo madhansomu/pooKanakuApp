@@ -23,7 +23,7 @@ function LoginForm() {
     setError(null);
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -36,8 +36,11 @@ function LoginForm() {
         return;
       }
 
-      // Force full reload so AuthProvider picks up the new session
-      window.location.href = redirectTo;
+      if (data.session) {
+        // Use router.push — no full page reload
+        // AuthProvider will pick up the SIGNED_IN event
+        router.push(redirectTo);
+      }
     } catch (err: any) {
       setError(err?.message || 'Login failed');
       setLoading(false);
