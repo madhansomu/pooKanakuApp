@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
@@ -9,7 +9,8 @@ import type { User } from '../types/database';
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { setUser, setInitialized, setLoading, initialized, user } = useAuthStore();
+  const { setUser, setInitialized, setLoading, initialized } = useAuthStore();
+  const redirecting = useRef(false);
 
   const isLoginPage = pathname?.startsWith('/login');
 
@@ -20,7 +21,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
       if (!session) {
         setUser(null);
-        if (!isLoginPage) {
+        if (!isLoginPage && !redirecting.current) {
+          redirecting.current = true;
           router.replace('/login');
         }
         return;
@@ -35,6 +37,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (userRow) {
         setUser(userRow as User);
       } else {
+        // Auto-create user row if missing
         const { data: newUser } = await supabase
           .from('users')
           .insert({
@@ -51,67 +54,45 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           setUser(newUser as User);
         } else {
           setUser(null);
-          if (!isLoginPage) {
-            router.replace('/login');
-          }
         }
       }
     } catch (err) {
       console.error('AuthProvider: failed to load user', err);
       setUser(null);
-      if (!isLoginPage) {
-        router.replace('/login');
-      }
     } finally {
       setLoading(false);
     }
   }, [setUser, setLoading, router, isLoginPage]);
 
   useEffect(() => {
-    if (initialized) return;
-
+    // Load user on mount
     loadUser().then(() => setInitialized());
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event) => {
+      async (event, session) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Re-load user when signed in or token refreshed
           await loadUser();
+          setInitialized();
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
-          if (!isLoginPage) {
+          setInitialized();
+          if (!isLoginPage && !redirecting.current) {
+            redirecting.current = true;
             router.replace('/login');
           }
         }
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [initialized, loadUser, setInitialized, setUser, router, isLoginPage]);
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Don't render protected content while checking auth
-  if (!initialized && !isLoginPage) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'var(--color-background)',
-      }}>
-        <div style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🌺</div>
-          <div style={{ fontSize: '0.875rem' }}>Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Redirect to login if not authenticated (and not on login page)
-  if (!user && !isLoginPage && initialized) {
-    return null;
-  }
+  // Reset redirect guard when pathname changes
+  useEffect(() => {
+    redirecting.current = false;
+  }, [pathname]);
 
   return <>{children}</>;
 }
